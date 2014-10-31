@@ -4,9 +4,9 @@ object Lab4 extends jsy.util.JsyApplication {
   
   /*
    * CSCI 3155: Lab 4
-   * <Your Name>
+   * Brandon Mikulka
    * 
-   * Partner: <Your Partner's Name>
+   * Partner: Aaron Holt
    * Collaborators: <Any Collaborators>
    */
 
@@ -37,17 +37,23 @@ object Lab4 extends jsy.util.JsyApplication {
   /* Lists */
   
   def compressRec[A](l: List[A]): List[A] = l match {
-    case Nil | _ :: Nil => throw new UnsupportedOperationException
-    case h1 :: (t1 @ (h2 :: _)) => throw new UnsupportedOperationException
+    case Nil | _ :: Nil => l
+    case h1 :: (t1 @ (h2 :: _)) => if (h1==h2) compressRec(t1) else h1::compressRec(t1)
   }
   
   def compressFold[A](l: List[A]): List[A] = l.foldRight(Nil: List[A]){
-    (h, acc) => throw new UnsupportedOperationException
+    (h, acc) => acc match {
+      case Nil => h::acc
+      case h1 :: t1 => if (h==h1) h::t1 else h::acc
+    }
   }
   
   def mapFirst[A](f: A => Option[A])(l: List[A]): List[A] = l match {
-    case Nil => throw new UnsupportedOperationException
-    case h :: t => throw new UnsupportedOperationException
+    case Nil => l
+    case h :: t => f(h) match{
+      case Some(a) => a::t
+      case None => h::mapFirst(f)(t)
+    }
   }
   
   /* Search Trees */
@@ -60,8 +66,12 @@ object Lab4 extends jsy.util.JsyApplication {
     
     def foldLeft[A](z: A)(f: (A, Int) => A): A = {
       def loop(acc: A, t: Tree): A = t match {
-        case Empty => throw new UnsupportedOperationException
-        case Node(l, d, r) => throw new UnsupportedOperationException
+        case Empty => acc
+        case Node(l, d, r) => {
+          val acc2=loop(acc,l)
+          val acc3=f(acc2,d)
+          loop(acc3,r)
+        }
       }
       loop(z, this)
     }
@@ -86,7 +96,7 @@ object Lab4 extends jsy.util.JsyApplication {
   
   def strictlyOrdered(t: Tree): Boolean = {
     val (b, _) = t.foldLeft((true, None: Option[Int])){
-      throw new UnsupportedOperationException
+      (acc,d) => if (acc._2.getOrElse(0) < d) (acc._1 && true, Option(d)) else (acc._1 && false, None)
     }
     b
   }
