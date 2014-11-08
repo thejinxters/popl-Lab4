@@ -1,3 +1,5 @@
+import jsy.lab4.ast
+
 object Lab4 extends jsy.util.JsyApplication {
   import jsy.lab4.ast._
   import jsy.lab4.Parser
@@ -199,7 +201,6 @@ object Lab4 extends jsy.util.JsyApplication {
         case tgot => err(tgot, e1)
       }
       case Obj(fields) => {
-        //TODO: Rewrite with a case match
         TObj( fields.map{ case (x,y) => (x,typ(y))} )
       }
       case GetField(e1, f) => typ(e1) match{
@@ -250,7 +251,7 @@ object Lab4 extends jsy.util.JsyApplication {
       case ConstDecl(y, e1, e2) => ConstDecl(y, subst(e1), if (x == y) e2 else subst(e2))
       case Function(p, params, tann, e1) => p match {
         case Some(f) if f == x =>  e
-        case None =>
+        case _ =>
           params.foreach {
             case (param, t) => if (x == param) return e
           }
@@ -265,6 +266,10 @@ object Lab4 extends jsy.util.JsyApplication {
         Call(e1_new, args_new)
       case Obj(fields) => Obj(fields.map{ case (s,e2) => (s,subst(e2)) })
       case GetField(e1, f) => if (x != f) GetField(subst(e1),f) else e
+      case _ => {
+        println("The error caused by the value: " + e)
+        throw StuckError(e)
+      }
     }
   }
 
@@ -295,16 +300,21 @@ object Lab4 extends jsy.util.JsyApplication {
         v1 match {
           case Function(p, params, _, e1) => {
             val e1p = (params, args).zipped.foldRight(e1){
-              throw new UnsupportedOperationException
+              (a:((String, ast.Typ),Expr), acc:Expr ) => a match{
+                case ((s, t), v2) => substitute(acc, v2, s)
+              }
             }
             p match {
-              case None => throw new UnsupportedOperationException
-              case Some(x1) => throw new UnsupportedOperationException
+              case None => e1p
+              case Some(x1) => substitute(e1p, v1, x1)
             }
           }
           case _ => throw new StuckError(e)
         }
-      /*** Fill-in more cases here. ***/
+      case GetField(Obj(fields),f) => fields.get(f) match{
+        case Some(e1) => e1
+        case None => e
+      }
 
       /* Inductive Cases: Search Rules */
       case Print(e1) => Print(step(e1))
@@ -313,10 +323,22 @@ object Lab4 extends jsy.util.JsyApplication {
       case Binary(bop, e1, e2) => Binary(bop, step(e1), e2)
       case If(e1, e2, e3) => If(step(e1), e2, e3)
       case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
-      /*** Fill-in more cases here. ***/
+      case Call(v1, args) if isValue(v1) => {
+        val new_args = args.map{ arg => if (isValue(arg)) arg else step(arg)}
+        Call(v1, new_args)
+      }
+      case Call(e1, args) => Call(step(e1), args)
+      case Obj(fields) => {
+       val new_fields = fields.map{ case(s, e2) => if (isValue(e2)) (s, e2) else (s, step(e2))}
+       Obj(new_fields)
+      }
+      case GetField(e1, f) => GetField(step(e1), f)
 
       /* Everything else is a stuck error. Should not happen if e is well-typed. */
-      case _ => throw StuckError(e)
+      case _ => {
+        println("The error caused by the expression: " + e)
+        throw StuckError(e)
+      }
     }
   }
 
