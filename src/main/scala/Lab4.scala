@@ -248,14 +248,23 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(subst(e1), subst(e2), subst(e3))
       case Var(y) => if (x == y) v else e
       case ConstDecl(y, e1, e2) => ConstDecl(y, subst(e1), if (x == y) e2 else subst(e2))
-      case Function(p, params, tann, e1) =>
-        throw new UnsupportedOperationException
+      case Function(p, params, tann, e1) => p match {
+        case Some(f) if f == x =>  e
+        case None =>
+          params.foreach {
+            case (param, t) => if (x == param) return e
+          }
+          Function(p, params, tann, subst(e1))
+      }
       case Call(e1, args) =>
-        throw new UnsupportedOperationException
-      case Obj(fields) =>
-        throw new UnsupportedOperationException
-      case GetField(e1, f) =>
-        throw new UnsupportedOperationException
+        // substitute for e1
+        val e1_new = subst(e1)
+        // substitute for each arg in arg
+        val args_new = args.map{ e2 => subst(e2) }
+        // return substituted call
+        Call(e1_new, args_new)
+      case Obj(fields) => Obj(fields.map{ case (s,e2) => (s,subst(e2)) })
+      case GetField(e1, f) => if (x != f) GetField(subst(e1),f) else e
     }
   }
 
