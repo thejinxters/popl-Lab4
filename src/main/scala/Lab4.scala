@@ -314,6 +314,31 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(step(e1), e2, e3)
       case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
       /*** Fill-in more cases here. ***/
+      case Call(e1, args) => e1 match{
+        case Function(_,_,_,_) => Call(step(e1), args)
+        case _ => if(isValue(e1)) throw new StuckError(e) else Call(step(e1),args)
+      }
+      // case Obj(field) => {
+      //   //map-->list
+      //   val f = field.toList
+      //   //fList will be list after stepping on e1 when necessary
+      //   val fList = f.foreach{
+      //     case(s, e1) => Some(s, step(e1))     
+      //   }
+      //   //Change back to map
+      //   val newMap = fList.toMap
+      //   Obj(newMap)
+
+      // }
+      // case Obj(fields) => Obj(fields.map{ case (s,e2) => (s,step(e2)) })
+      case GetField(Obj(fields), f) => fields.get(f) match {
+        case Some(e) => e
+        //pattern match on value mapped to key f, if the value is defined, return the mapped f that we are looking for
+        case None => throw new StuckError(e)
+      }
+      case GetField(e1, f) => GetField(step(e1), f)
+
+
 
       /* Everything else is a stuck error. Should not happen if e is well-typed. */
       case _ => throw StuckError(e)
