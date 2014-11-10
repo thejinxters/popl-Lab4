@@ -256,6 +256,15 @@ object Lab4 extends jsy.util.JsyApplication {
           }
           Function(p, params, tann, subst(e1))
       }
+      // case Function(p, params, tann, e1) => {
+      //   if (params.exists((t1: (String, Typ)) => t1._1 == x) || Some(x) == p) {
+      //   //checks the names of each parameter to see if name matches with x, returns function
+      //     e
+      //   } else {
+      //     //otherwise just recurse on a substited body part of the function.
+      //     Function(p, params, tann, subst(e1))
+      //   }
+      // }
       case Call(e1, args) =>
         // substitute for e1
         val e1_new = subst(e1)
@@ -291,19 +300,6 @@ object Lab4 extends jsy.util.JsyApplication {
       case Binary(Or, B(b1), e2) => if (b1) B(true) else e2
       case If(B(b1), e2, e3)  => if (b1) e2 else e3
       case ConstDecl(x, v1, e2) if isValue(v1) => substitute(e2, v1, x)
-      case Call(v1, args) if isValue(v1) && (args forall isValue) =>
-        v1 match {
-          case Function(p, params, _, e1) => {
-            val e1p = (params, args).zipped.foldRight(e1){
-              throw new UnsupportedOperationException
-            }
-            p match {
-              case None => throw new UnsupportedOperationException
-              case Some(x1) => throw new UnsupportedOperationException
-            }
-          }
-          case _ => throw new StuckError(e)
-        }
       /*** Fill-in more cases here. ***/
 
       /* Inductive Cases: Search Rules */
@@ -314,10 +310,24 @@ object Lab4 extends jsy.util.JsyApplication {
       case If(e1, e2, e3) => If(step(e1), e2, e3)
       case ConstDecl(x, e1, e2) => ConstDecl(x, step(e1), e2)
       /*** Fill-in more cases here. ***/
-      case Call(e1, args) => e1 match{
-        case Function(_,_,_,_) => Call(step(e1), args)
-        case _ => if(isValue(e1)) throw new StuckError(e) else Call(step(e1),args)
-      }
+
+
+      case Call(v1, args) if isValue(v1) && (args forall isValue) =>
+        v1 match {
+          case Function(p, params, _, e1) => {
+            val e1p = (params, args).zipped.foldRight(e1){
+              //s=string,t=type,e2=expr
+              case (((s,t),e2),acc) => substitute(acc,e2,s)
+            }
+            p match {
+              case None => e1p
+              case Some(x1) => substitute(e1p,v1,x1)
+            }
+          }
+          case _ => throw new StuckError(e)
+        }
+
+
       // case Obj(field) => {
       //   //map-->list
       //   val f = field.toList
@@ -331,6 +341,20 @@ object Lab4 extends jsy.util.JsyApplication {
 
       // }
       // case Obj(fields) => Obj(fields.map{ case (s,e2) => (s,step(e2)) })
+      case Obj(f) => {
+        val fList = f.toList
+        //turns fields from map to list of tuples.
+        def newFunction(arg: (String, Expr)): Option[(String, Expr)] = {
+          //makes sure every field is a value type and steps on it.
+          arg match {
+            case (s, e1) => if (!isValue(e1)) Some(s, step(e1)) else None
+          }
+        }
+        val newList = mapFirst(newFunction)(fList)
+        val fMap = newList.toMap //turns it back into a map
+        Obj(fMap) //then runs obj on that new map with values all stepped on
+      }
+
       case GetField(Obj(fields), f) => fields.get(f) match {
         case Some(e) => e
         //pattern match on value mapped to key f, if the value is defined, return the mapped f that we are looking for
