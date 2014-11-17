@@ -1,0 +1,7 @@
+const add = function(a:number,b:number) {
+    return a+b;
+};
+
+const a = add(7,add(6,add(5,add(4,3))));
+
+console.log(a);
