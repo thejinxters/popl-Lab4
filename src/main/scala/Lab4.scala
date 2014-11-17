@@ -312,22 +312,60 @@ object Lab4 extends jsy.util.JsyApplication {
       /*** Fill-in more cases here. ***/
 
 
-      case Call(v1, args) if isValue(v1) && (args forall isValue) =>
-        v1 match {
-          case Function(p, params, _, e1) => {
-            val e1p = (params, args).zipped.foldRight(e1){
-              //s=string,t=type,e2=expr
-              case (((s,t),e2),acc) => substitute(acc,e2,s)
-            }
-            p match {
-              case None => e1p
-              case Some(x1) => substitute(e1p,v1,x1)
-            }
+      // case Call(v1, args) if isValue(v1) && (args forall isValue) =>
+      //   v1 match {
+      //     case Function(p, params, _, e1) => {
+      //       val e1p = (params, args).zipped.foldRight(e1){
+      //         //s=string,t=type,e2=expr
+      //         case (((s,t),e2),acc) => substitute(acc,e2,s)
+      //       }
+      //       p match {
+      //         case None => e1p
+      //         case Some(x1) => substitute(e1p,v1,x1)
+      //       }
+      //     }
+      //     case _ => throw new StuckError(e)
+      //   }
+
+//return type is not specificed
+      case Call((func @ Function(p, params, _, bod)), args) if args.forall(isValue) => {
+        //expecting function called func, pattern match on name . If args are all values.
+          val bp = p match {
+            case Some(f) => substitute(bod, func, f)
+            //substitue on its body replacing instance of name with itself.
+            case None => bod
+            //if its not nameed return body of function
           }
-          case _ => throw new StuckError(e)
+        params.zip(args).foldLeft(bp){
+          //combine params (string, type) tuple with corresponding expresision arg and foldleft with the established invital value bp
+         (e1: Expr, t1: ((String, Typ), Expr)) => substitute(e1, t1._2, t1._1._1)
+         // in the accumulator substitue every instance of argument name with its corresponding expression
         }
+      }
 
 
+      //return type is specified
+      case Call(Function(p, params, tann, bod), args) => {
+        //returns a called with each argument stepped on
+        Call(Function(p, params, tann, bod), mapFirst(
+            (arg: Expr) => if (isValue(arg)) {
+              //checks to see if we can step
+               None
+              }
+              else {
+               Some(step(arg))
+              }
+          )(args))
+          //map the stepped version of each argument to its original expression
+      }
+
+      //this is if nothing has been specified, and e1 is a function
+      //we start here, and then go up one, and then go up one more
+      case Call(e1, args) => e1 match{
+        case Function(_,_,_,_) => Call(step(e1), args) //step on e1
+        case _ => if(isValue(e1)) throw new StuckError(e) else Call(step(e1), args)
+        //if e1 isn't a value, step on it and then call it so we can deal with if-statments
+      }
       // case Obj(field) => {
       //   //map-->list
       //   val f = field.toList
