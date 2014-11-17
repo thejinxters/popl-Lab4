@@ -1,0 +1,7 @@
+const add = function(a:number,b:number) {
+	return a+b
+}
+
+const a = add(1,add(2,add(5,add(3,4))))
+
+jsy.print(a)
